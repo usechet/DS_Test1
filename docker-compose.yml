@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  traefik:
+    image: traefik:v2.10
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock"
+    networks:
+      - etl_network
+
+  neo4j:
+    image: neo4j:5.12
+    container_name: test1_usechetomas-neo4j-1
+    environment:
+      - NEO4J_AUTH=neo4j/wrongpassword
+    ports:
+      - "7474:7474"
+      - "7687:7687"
+    networks:
+      - etl_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.neo4j.rule=Host(`neo4j.localhost`)"
+      - "traefik.http.routers.neo4j.entrypoints=web"
+      - "traefik.http.services.neo4j.loadbalancer.server.port=7474"
+    volumes:
+      - ./data/neo4j:/data
+      - ./data/import:/var/lib/neo4j/import
+  postgres:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=tfue
+      - POSTGRES_PASSWORD=wrongpassword
+      - POSTGRES_DB=testdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./postgres/init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - etl_network
+
+  etl_service:
+    image: test1_usechetomas-etl_service
+    container_name: test1_usechetomas-etl_service-1
+    networks:
+      - etl_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.etl.rule=Host(`localhost`) && PathPrefix(`/tomas-useche/api`)"
+      - "traefik.http.middlewares.etl-stripprefix.stripprefix.prefixes=/tomas-useche, /tomas-useche/api"
+      - "traefik.http.routers.etl.middlewares=etl-stripprefix"
+      - "traefik.http.services.etl.loadbalancer.server.port=5000"
+volumes:
+  neo4j_data:
+  postgres_data:
+
+networks:
+  etl_network:
+    driver: bridge
