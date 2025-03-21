@@ -39,7 +39,6 @@ CREATE (:Pelicula {
     año_lanzamiento: toInteger(row.año_lanzamiento),
     genero: row.genero
 });
-```
 
 Para verificar la carga, usa:
 
@@ -63,12 +62,5 @@ Luego, conecta los contenedores:
 
 docker ps -q | ForEach-Object { docker network connect etl_network $_ }
 
-
-### ❌ "ModuleNotFoundError: No module named 'requests'"
-
-Asegúrate de que la imagen de **etl_service** tenga `requests` instalado en **requirements.txt** y vuelve a construir el servicio:
-
-
-docker-compose up -d --build etl_service
 
 
